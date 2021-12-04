@@ -1,0 +1,28 @@
+ ---part 1--- 
+  problem statement:
+    Given an input file containing a list of positive integers, return how many numbers are larger than the previous number.
+
+  example:
+    1 2 3 3 1 2 4
+    ->+ + _ - + +
+
+  input:
+    a file containing a list of positive integers
+  output:
+    [integer] num of increases
+
+  algorithm:
+    stream input file line by line,
+    convert a stream of integers to Boolean of increased or not increased
+    sum all the trues in the Boolean stream
+    return the sum
+
+---part 2---
+  problem followup from part 1:
+    Instead of looking at increases of the input, we transform input into a list of the sum of three consecutive numbers, then compute the sum of increases
+
+  example:
+    1 2 3 3 1 2 4
+    ->  6 8 7 6 7
+    ->    + - - +
+    ->          2

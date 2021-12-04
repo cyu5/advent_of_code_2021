@@ -1,0 +1,92 @@
+---part 1---
+  data structure:
+    list for list of nums
+    custom structure for board
+      1. map
+      2. row sums list and col sums list
+
+  input:
+    a list of nums
+    a set of boards
+
+  output:
+    of the board with the least steps to win
+    (sum of all unmarked numbers) times (last num ) = score
+
+  sub-problem:
+    1. reading input from file
+      1. read nums:
+        input: comma separated nums
+        output: list of nums
+      2. read boards:
+        1. split each board for extraction:
+          1. split each row for extraction
+            input: a string of line separated rows
+            output: [[Integer]]
+            1. read row:
+              input: string of space separated nums
+              output: [Integer]
+          2. map extracted board to custom board structure
+  
+  algorithm:
+    1. for board in board set,
+    2. map board to {steps to win, score}
+      input: [[Integer]]
+      output: {steps::Integer, score: Integer}
+      problem summary:
+        given a 2D 5x5 board, a list of numbers, simulate the bingo game to determine steps to win and score
+
+        simulation:
+          1. turn board to custom DS(map of num, col sum list and row sum list)
+            map = 
+              for row, i <- with_index(board), col, j <- with_index(row), num = board[i][j], into: %{}, {num, {i, j}}
+          2. recur through nums(map, col sum, row sum, num, steps):
+            1. find row, col of map[num]
+            2. reduce col sum at col & row sum at row by num
+            3. if won, do: {steps, score}
+              score = num * sum(row sums)
+            4. recur with reduce nums and new col/row sums, steps + 1, etc
+
+    3. min of {steps to win, score}s by steps to win 
+    4. return min_item.score
+
+
+
+
+
+
+
+
+
+  ideas:
+    * problem requires streaming the list of nums and stop when a winner is found
+      * an iterative problem:
+        while not winner:
+          process next num in stream
+          update boards states
+
+    * how to represent each board?
+      board - 5 by 5 nums, 
+      interactions:
+        1. find num in board
+        2. marking for checked or not
+        3. horizontal/vertical scan for all true
+      nested list, map?
+
+    * how to check wining state?
+      1. check each board if a num has just been inserted
+        1. insert num method returns result or nil
+
+    * how about try out the winner number and steps that takes to win for each board, then find min step at the end?
+      * represent board by 
+        1. a mapping of number to row, col
+        2. two lists of 5s, representing 2 different ways to win, either row bingo or col bingo
+          ! what if the number repeats, two spot has the same num? or only one but input adds two in?
+          ! does number repeats, does number on board repeats?
+          = safe to assume no based on observation
+        3. sum of unmarked = sum of all - sum of entered
+
+        1. a mappint from number to row, col
+        2. two lists for row sums and col sums
+          1. when a sum becomes 0, then wins
+          2. easily obtain unmarked sum by summing one list

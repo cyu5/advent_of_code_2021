@@ -1,0 +1,58 @@
+--- part 1 ---
+  problem summary:
+    given a list of instructions from the following set:
+      * forward x
+      * down x
+      * up x
+    where x can be any pos int of (most likely) only a single digit, simulate the instructions with the starting point of (0, 0) to obtain the final position (x, y).
+    Return x * y
+
+  assumptions/question:
+    * x is a single digit pos int
+    * depth cannot be negative
+    
+  example/test cases:
+    # f = forward, d = down, u = up
+
+    ---1---
+    f 4
+    f 4
+    d 4
+    u 2
+    (8, 2) -> 16
+
+    ---2---
+    _
+    (0, 0) -> 0
+
+    ---3---
+    d 4
+    u 10
+    f 1
+    (1, -6) -> -6
+
+    ---4---
+    f 10
+    (10, 0) -> 0
+
+  sub-problems/components:
+    1. input file
+      streaming lines from input file
+      extract instruction from raw string:
+        remove newline
+        split by space -> dir, unit
+    2. processing inputs
+      keep a running position while streaming instructions
+      (dir, unit) -> unit_vec * unit -> vec (0, unit) | (unit, 0)
+      pos += vec
+    3. return x * y
+
+--- part 2 ---
+  problem follow-up:
+    In addition to (x, y) coordinate, a third value of aim has been added, and the meaning of instructions have been changed. 
+    Input processing has to changed accordingly:
+      * forward m -> x+m, y+a*m, a
+      * down m -> x, y, a+m
+      * up m -> x, y, a-m
+
+  

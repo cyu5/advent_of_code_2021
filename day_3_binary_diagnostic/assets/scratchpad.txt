@@ -1,0 +1,42 @@
+---part 1---
+  problem summary:
+    given a list of 12-bits binaries, find the list's gamma and epsilson number, and return the multiple of the two numbers
+      gamma - a 12-bits binaries which each bit's value represents the most common value at its position for all binaries in the list 
+      epsilson - 1's complement of gamma
+
+  assumptions/questions:
+    what if 1 and 0 are equally common? 
+      - since there is no mention in problem statement, assume this will no happen in input file
+
+  trap/pitfall:
+    losing leading 0 bits in converting from string to integer type
+
+  algorithm:
+    1. input data:
+      stream file line by line
+      convert raw string to binaries
+    2. process streams of binaries to count of each bits:
+      create count_list:
+        start with a list of 12 zeros
+        accumulate count for each of the 12 bits
+        add binary to count_list bit by index
+      keep track of total num of binaries:
+        with each binary add to count_list, have a num variable inc along side 
+      turn count_list to gamma:
+        map each count in count_list to 1 or 0
+          to 1 if count > half of the lines 
+          to 0 otherwise
+    3. return gamma * epilson(one's complement of gamma)
+
+
+  sub-problems/components:
+
+---part 2---
+  problem modification:
+    find oxygen and co2 ratings:
+      given a list of binary lists:
+        1. find the most common bit among the head of all lists
+        2. filter the list down to the ones with the most common first bit, if 1 and 0 are equally common, choose 1 if looking for oxygen rating, 0 if co2 rating
+        3. map each binary list to their tails
+        4. recur back to step 1 if any binary list is not empty
+        5. return the a new binary list consist of the most common bits in the process above
