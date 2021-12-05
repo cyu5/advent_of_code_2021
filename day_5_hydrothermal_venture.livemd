@@ -38,28 +38,26 @@ defmodule Day5HydrothermalVenture do
 
   def diagonal?([{x1, y1}, {x2, y2}]), do: abs(x1 - x2) == abs(y1 - y2)
 
-  def line_reducer(line, map) do
-    points =
-      cond do
-        horizontal?(line) ->
-          [{x1, y}, {x2, y}] = line
-          for x <- x1..x2, into: %{}, do: {{x, y}, 1}
+  def to_points(line) do
+    cond do
+      horizontal?(line) ->
+        [{x1, y}, {x2, y}] = line
+        for x <- x1..x2, do: {x, y}
 
-        vertical?(line) ->
-          [{x, y1}, {x, y2}] = line
-          for y <- y1..y2, into: %{}, do: {{x, y}, 1}
+      vertical?(line) ->
+        [{x, y1}, {x, y2}] = line
+        for y <- y1..y2, do: {x, y}
 
-        diagonal?(line) ->
-          [{x1, y1}, {x2, y2}] = line
-          for point <- Stream.zip([x1..x2, y1..y2]), into: %{}, do: {point, 1}
-      end
-
-    Map.merge(points, map, fn _k, v1, v2 -> v1 + v2 end)
+      diagonal?(line) ->
+        [{x1, y1}, {x2, y2}] = line
+        Enum.zip(x1..x2, y1..y2)
+    end
   end
 
   def count_overlap_points(lines) do
     lines
-    |> Enum.reduce(%{}, &line_reducer/2)
+    |> Stream.flat_map(&to_points/1)
+    |> Enum.frequencies()
     |> Enum.count(fn {_, mark} -> mark >= 2 end)
   end
 
@@ -80,6 +78,11 @@ end
 
 input
 |> Day5HydrothermalVenture.part_2()
+
+# TODOs:
+# learn regex or pattern matching for strings to parse input
+# learn MD for writing scratchpad
+# think about ways to make the function more flat as opposed to having nested function calls 
 ```
 
 ## Scratchpad
