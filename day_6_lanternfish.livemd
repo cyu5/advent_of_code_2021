@@ -1,0 +1,80 @@
+# Day 6 Lanternfish
+
+## Section
+
+<!-- livebook:{"livebook_object":"cell_input","name":"input","type":"textarea","value":"4,1,1,4,1,1,1,1,1,1,1,1,3,4,1,1,1,3,1,3,1,1,1,1,1,1,1,1,1,3,1,3,1,1,1,5,1,2,1,1,5,3,4,2,1,1,4,1,1,5,1,1,5,5,1,1,5,2,1,4,1,2,1,4,5,4,1,1,1,1,3,1,1,1,4,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,5,1,1,2,1,1,1,1,1,1,1,2,4,4,1,1,3,1,3,2,4,3,1,1,1,1,1,2,1,1,1,1,2,5,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,4,1,5,1,3,1,1,1,1,1,5,1,1,1,3,1,2,1,2,1,3,4,5,1,1,1,1,1,1,5,1,1,1,1,1,1,1,1,3,1,1,3,1,1,4,1,1,1,1,1,2,1,1,1,1,3,2,1,1,1,4,2,1,1,1,4,1,1,2,3,1,4,1,5,1,1,1,2,1,5,3,3,3,1,5,3,1,1,1,1,1,1,1,1,4,5,3,1,1,5,1,1,1,4,1,1,5,1,2,3,4,2,1,5,2,1,2,5,1,1,1,1,4,1,2,1,1,1,2,5,1,1,5,1,1,1,3,2,4,1,3,1,1,2,1,5,1,3,4,4,2,2,1,1,1,1,5,1,5,2"} -->
+
+```elixir
+defmodule Day6Lanternfish do
+  @total_days 256
+  @new_days 8
+  @reset_days 6
+
+  def freq_queue(list) do
+    count = Enum.frequencies(list)
+    count_list = Enum.map(0..@new_days, &Map.get(count, &1, 0))
+    :queue.from_list(count_list)
+  end
+
+  def update_queue(q) do
+    {{_, eights}, q} = :queue.out(q)
+    {{_, sevens}, q} = :queue.out_r(q)
+    {{_, sixes}, q} = :queue.out_r(q)
+
+    q
+    |> then(&:queue.in(sixes + eights, &1))
+    |> then(&:queue.in(sevens, &1))
+    |> then(&:queue.in(eights, &1))
+  end
+
+  def simulate(fish_list, days) do
+    fish_list
+    |> freq_queue
+    |> Stream.iterate(&update_queue/1)
+    |> Enum.at(days)
+    |> :queue.to_list()
+  end
+
+  def part_1(input) do
+    input
+    |> simulate(80)
+    |> Enum.sum()
+  end
+
+  def part_2(input) do
+    input
+    |> simulate(256)
+    |> Enum.sum()
+  end
+end
+
+input = [3, 4, 3, 1, 2]
+
+Day6Lanternfish.part_1(input)
+```
+
+---part 1---
+  Input:
+
+```
+a list of integers
+```
+
+Alternative input:
+
+```
+a queue of size 8 of Integers
+  given input:
+    1. initialize queue size 8
+    2. for each int in input, inc queue[int] by 1
+```
+
+Output:
+
+```
+sum of the queue - after 80 days of simulation:
+  one simu:
+    1. num = pop queue
+    2. push num #new fish
+    3. queue.at(6, num) # reset old fish 
+```
