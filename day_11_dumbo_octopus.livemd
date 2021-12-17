@@ -1,0 +1,247 @@
+# Day 11: Dumbo Octopus
+
+## Approach
+
+### Part 1
+
+#### Problem Summary
+
+#### Inputs:
+
+* 2D matrix of Integers 0..9
+
+#### Intermediate output:
+
+* a list of matrix at each step
+* a list of size 100 representing the overflows(zeros) at each step
+
+#### Output:
+
+* total overflow after 100 steps
+
+#### terminology
+
+overflow == zero count
+
+#### implicit condition
+
+there is no zero at the start. Meaning that a 0 energy level is equivalent to flashing(overflowing)
+
+#### sub-problem
+
+* next-step, given list of points and map of energy levels:
+
+  1. glowing = points at 9
+
+  2. points at 9 = 0
+
+  3. map_update = spread_energy(glowing)
+
+  4. for point, added_energy <- map update
+
+  5. original_energy = map[point]
+
+  6. new_energy = added + original
+
+  7. if new >= 9
+
+  8. find all adj points and their energy levels
+
+  9. for each adj point
+
+     1. increase their level by 1
+     2. if their energy level is above 9, put in next glowing level
+
+next_step
+given a energy map
+
+1. increase all energy by 1
+2. split map to two, one has energy 10(releasing), the other are normal 1..9
+3. call release(releasing, normal) -> drained(zero energy), new_releasing(10 energy), and new_normal(1..9)
+4. repeatedly call release energy until releasing is empty
+5. return the length of drained and new_normal for next step
+
+release(sources, targets)
+
+1. map each source to adj_points
+2. effects = frequencies of adj_points from all sources
+3. add effects to targets to get affected_targets
+4. drained = sources
+5. split affected_targets to new_release and remaining_targets
+6. return {drained, new_releases, remaining_targets}
+
+#### data structure
+
+* list of 10 representing points at each energy level 0..9
+* map of points to energy level
+
+#### algorithm
+
+main algorithm
+
+1. create list and map from input
+2. simulate input(initial energy level matrix) to 100 steps:
+
+* stream iterate next_step function on list and map
+* take first 100 of the stream data
+
+1. map matrix at each step to the count of 0s in the matrix
+2. sum up the count of 0s in the 100 steps
+
+sub-procedure - next step function
+
+### Part 2
+
+#### Problem Modification
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def parse(input) do
+    for {row, i} <- String.split(input, "\n", trim: true) |> Stream.with_index(),
+        {digit_str, j} <- String.codepoints(row) |> Stream.with_index(),
+        digit = String.to_integer(digit_str),
+        into: %{} do
+      {{i, j}, digit}
+    end
+  end
+
+  def adjacent({i, j} = point) do
+    for di <- -1..1,
+        dj <- -1..1,
+        adj_point = {i + di, j + dj},
+        adj_point != point do
+      adj_point
+    end
+  end
+
+  def release(energy_map) do
+    releasing =
+      energy_map
+      |> Stream.filter(fn {_, energy} -> energy > 9 end)
+      |> Enum.into(%{})
+
+    affected =
+      for {point, _} <- releasing,
+          affected <- adjacent(point),
+          energy_map[affected] in 1..9 do
+        affected
+      end
+      |> Enum.frequencies()
+
+    energy_map
+    |> Map.merge(affected, fn _, v1, v2 -> v1 + v2 end)
+    |> Map.merge(releasing, fn _, _, _ -> 0 end)
+  end
+
+  def next_energy_levels(energy_map) do
+    charged_map =
+      for {point, energy} <- energy_map,
+          into: %{} do
+        {point, energy + 1}
+      end
+
+    Stream.iterate(charged_map, &release/1)
+    |> Enum.find(fn energy_map ->
+      Enum.all?(energy_map, fn {_, energy} -> energy <= 9 end)
+    end)
+  end
+
+  def simulate(initial_state, next_fun, steps) do
+    Stream.iterate(initial_state, next_fun)
+    |> Stream.take(steps)
+  end
+
+  def solve_part_1(input) do
+    # 101 steps for 0..100 steps
+    steps = 101
+
+    timeline =
+      parse(input)
+      |> simulate(&next_energy_levels/1, steps)
+
+    for energy_map <- timeline do
+      energy_map
+      |> Enum.filter(fn {_, energy} -> energy == 0 end)
+      |> Kernel.length()
+    end
+    |> Enum.sum()
+  end
+
+  def solve_part_2(input) do
+    timeline =
+      parse(input)
+      |> Stream.iterate(&next_energy_levels/1)
+
+    {_, step} =
+      timeline
+      |> Stream.with_index()
+      |> Enum.find(fn {energy_map, step} ->
+        Enum.all?(energy_map, fn {point, energy} -> energy == 0 end)
+      end)
+
+    step
+  end
+end
+
+test_input =
+  "5483143223
+2745854711
+5264556173
+6141336146
+6357385478
+4167524645
+2176841721
+6882881134
+4846848554
+5283751526"
+  |> Solution.solve_part_2()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+IO.puts("Answer for part 1: #{answer}")
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```
+
+## Test Solution Module
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule SolutionTest do
+  use ExUnit.Case, async: true
+  import Solution
+
+  test "it works" do
+    assert true
+  end
+end
+
+ExUnit.run()
+```

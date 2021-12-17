@@ -1,0 +1,152 @@
+# Day 14: Extended Polymerization
+
+## Approach
+
+### Part 1
+
+#### Problem Summary
+
+#### Inputs:
+
+#### Output:
+
+#### important assumptions
+
+### Part 2
+
+#### Problem Modification
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def parse(input) do
+    [template, rules] = String.split(input, "\n\n", trim: true)
+
+    rules_map =
+      for rule <- String.split(rules, "\n", trim: true),
+          <<pair::binary-size(2), " -> ", inserted::binary>> = rule,
+          into: %{} do
+        <<first::binary-size(1), second::binary>> = pair
+        new_pairs = [<<first::binary, inserted::binary>>, <<inserted::binary, second::binary>>]
+        {pair, new_pairs}
+      end
+
+    [template, rules_map]
+  end
+
+  def to_overlap_pairs(polymer) do
+    polymer
+    |> String.graphemes()
+    |> Stream.chunk_every(2, 1)
+    |> Stream.map(&Enum.join/1)
+    |> Enum.frequencies()
+  end
+
+  def transform(polymer, rules) do
+    for {pair, count} <- polymer,
+        new_pair <- Map.get(rules, pair, [pair]),
+        reduce: %{} do
+      map -> Map.update(map, new_pair, count, &(&1 + count))
+    end
+  end
+
+  def to_elements(overlapping_pairs) do
+    for {pair, count} <- overlapping_pairs,
+        elem = String.at(pair, 0),
+        reduce: %{} do
+      map -> Map.update(map, elem, count, &(&1 + count))
+    end
+  end
+
+  def solve(input, steps) do
+    [template, rule_table] = parse(input)
+
+    {{_, min_count}, {_, max_count}} =
+      template
+      |> to_overlap_pairs
+      |> Stream.iterate(&transform(&1, rule_table))
+      |> Enum.at(steps)
+      |> to_elements
+      |> Enum.min_max_by(fn {_elem, count} -> count end)
+
+    max_count - min_count
+  end
+
+  def solve_part_1(input) do
+    solve(input, 10)
+  end
+
+  def solve_part_2(input) do
+    solve(input, 40)
+  end
+end
+
+test_input =
+  "NNCB
+
+CH -> B
+HH -> N
+CB -> H
+NH -> C
+HB -> C
+HC -> B
+HN -> C
+NN -> C
+BH -> H
+NC -> B
+NB -> B
+BN -> B
+BB -> N
+BC -> B
+CC -> N
+CN -> C"
+  |> Solution.solve_part_1()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+IO.puts("Answer for part 1: #{answer}")
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```
+
+## Test Solution Module
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule SolutionTest do
+  use ExUnit.Case, async: true
+  import Solution
+
+  test "it works" do
+    assert true
+  end
+end
+
+ExUnit.run()
+```

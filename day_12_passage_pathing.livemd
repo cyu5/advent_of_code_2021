@@ -1,0 +1,133 @@
+# Advent of Code 2021 Template
+
+## Approach
+
+### Part 1
+
+#### Problem Summary
+
+#### Inputs:
+
+#### Output:
+
+### Part 2
+
+#### Problem Modification
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def parse(input) do
+    for line <- String.split(input, "\n", trim: true) do
+      String.split(line, "-", trim: true)
+    end
+  end
+
+  def to_adj_lists(edges) do
+    list1 = Enum.group_by(edges, fn [v, _u] -> v end, fn [_v, u] -> u end)
+    list2 = Enum.group_by(edges, fn [_v, u] -> u end, fn [v, _u] -> v end)
+    Map.merge(list1, list2, fn _k, v1, v2 -> v1 ++ v2 end)
+  end
+
+  def small_cave?(name), do: String.downcase(name) == name
+
+  def all_paths(adj_lists, small_again? \\ false, curr \\ "start")
+  def all_paths(adj_lists, _, "end"), do: [["end"]]
+
+  def all_paths(adj_lists, small_again?, curr) do
+    for next <- adj_lists[curr],
+        Map.has_key?(adj_lists, next) do
+      updated_lists = Map.delete(adj_lists, curr)
+
+      cond do
+        curr == "start" ->
+          all_paths(updated_lists, small_again?, next)
+
+        small_cave?(curr) and small_again? ->
+          (all_paths(updated_lists, true, next) ++ all_paths(adj_lists, false, next))
+          |> Enum.uniq()
+
+        small_cave?(curr) ->
+          all_paths(updated_lists, false, next)
+
+        true ->
+          all_paths(adj_lists, small_again?, next)
+      end
+      |> Enum.map(fn path -> [curr | path] end)
+    end
+    |> Enum.concat()
+  end
+
+  def solve_part_1(input) do
+    parse(input)
+    |> to_adj_lists
+    |> all_paths
+    |> length
+  end
+
+  def solve_part_2(input) do
+    parse(input)
+    |> to_adj_lists
+    |> all_paths(true)
+    |> length
+  end
+end
+
+test_input =
+  "start-A
+start-b
+A-c
+A-b
+b-d
+A-end
+b-end"
+  |> Solution.solve_part_2()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+IO.puts("Answer for part 1: #{answer}")
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```
+
+## Test Solution Module
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule SolutionTest do
+  use ExUnit.Case, async: true
+  import Solution
+
+  test "it works" do
+    assert true
+  end
+end
+
+ExUnit.run()
+```

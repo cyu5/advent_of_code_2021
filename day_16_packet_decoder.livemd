@@ -1,0 +1,162 @@
+<!-- livebook:{"autosave_interval_s":null} -->
+
+# Day 16: Packet Decoder
+
+## Approach
+
+### Part 1
+
+#### Problem Summary
+
+#### Inputs:
+
+#### Output:
+
+### Part 2
+
+#### Problem Modification
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def get_example do
+    "A0016C880162017C3686B18A3D4780"
+  end
+
+  def parse(input) do
+    :binary.decode_hex(input)
+  end
+
+  def decode_literal(<<1::1, hex::4, rest::bits>>) do
+    {hex, rest}
+  end
+
+  def decode_literal(<<0::1, hex::4, rest::bits>>) do
+    {hex, {rest, nil}}
+  end
+
+  def decode_literal(last), do: last
+
+  def decode(<<version::3, 4::3, body::bits>>) do
+    {digits, [rest]} =
+      body
+      |> Stream.unfold(&decode_literal/1)
+      |> Enum.split(-1)
+
+    number = Integer.undigits(digits, 16)
+
+    {{version, 4, number}, rest}
+  end
+
+  def decode(<<version::3, type::3, 0::1, total::15, body::bits-size(total), rest::bits>>) do
+    sub =
+      body
+      |> Stream.unfold(&decode/1)
+      |> Enum.to_list()
+
+    {{version, type, sub}, rest}
+  end
+
+  def decode(<<version::3, type::3, 1::1, size::11, body::bits>>) do
+    {sub, rest} = Enum.map_reduce(1..size, body, fn _, acc -> decode(acc) end)
+
+    {{version, type, sub}, rest}
+  end
+
+  def decode(<<rest::bits>>), do: nil
+
+  def version_sum({v, 4, _}), do: v
+
+  def version_sum({v, _, sub}) do
+    sub_sum =
+      sub
+      |> Stream.map(&version_sum/1)
+      |> Enum.sum()
+
+    v + sub_sum
+  end
+
+  def eval({_, 0, args}), do: args |> Stream.map(&eval/1) |> Enum.sum()
+  def eval({_, 1, args}), do: args |> Stream.map(&eval/1) |> Enum.product()
+  def eval({_, 2, args}), do: args |> Stream.map(&eval/1) |> Enum.min()
+  def eval({_, 3, args}), do: args |> Stream.map(&eval/1) |> Enum.max()
+  def eval({_, 4, num}), do: num
+  def eval({_, 5, [arg1, arg2]}), do: if(eval(arg1) > eval(arg2), do: 1, else: 0)
+  def eval({_, 6, [arg1, arg2]}), do: if(eval(arg1) < eval(arg2), do: 1, else: 0)
+  def eval({_, 7, [arg1, arg2]}), do: if(eval(arg1) == eval(arg2), do: 1, else: 0)
+
+  def solve_part_1(input) do
+    {ast, _garbage} =
+      parse(input)
+      |> decode
+
+    version_sum(ast)
+  end
+
+  def solve_part_2(input) do
+    {ast, _garbage} =
+      parse(input)
+      |> decode
+
+    eval(ast)
+  end
+end
+
+Solution.get_example()
+|> Solution.solve_part_2()
+```
+
+## Test Solution Module
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule SolutionTest do
+  use ExUnit.Case, async: true
+  import Solution
+
+  @part_1_solution 31
+  @part_2_solution []
+
+  test "part 1 with example" do
+    assert solve_part_1(get_example()) == @part_1_solution
+  end
+
+  test "part 2 with example" do
+    assert solve_part_2(get_example()) == @part_2_solution
+  end
+end
+
+ExUnit.run()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+IO.puts("Answer for part 1: #{answer}")
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```
