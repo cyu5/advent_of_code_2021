@@ -1,0 +1,112 @@
+<!-- livebook:{"autosave_interval_s":null} -->
+
+# Day 17: Trick Shot
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def solve_part_2(input) do
+    [xrange, yrange] = parse(input)
+    x_vel_range = x_velocity_range(xrange)
+    y_vel_range = y_velocity_range(yrange)
+    brute_force(x_vel_range, y_vel_range, xrange, yrange)
+  end
+
+  def brute_force(x_vels, y_vels, x_range, y_range) do
+    x_possibilities = brute_force_x(x_vels, x_range)
+    y_possibilities = brute_force_y(y_vels, y_range)
+
+    combined =
+      for {t, vy_list} <- y_possibilities,
+          vx_list = x_possibilities[t],
+          vx_list != nil,
+          vy <- vy_list,
+          vx <- vx_list,
+          uniq: true do
+        {vx, vy}
+      end
+
+    length(combined)
+  end
+
+  def brute_force_y(y_vels, yrange) do
+    possibilities_by_steps =
+      for v0 <- y_vels,
+          vt = Stream.iterate(v0, &(&1 - 1)),
+          yt = Stream.scan(vt, &(&1 + &2)) |> Stream.take_while(&(&1 >= yrange.first)),
+          pos_with_t = Stream.with_index(yt, 1),
+          in_range_yt = Stream.filter(pos_with_t, fn {y, t} -> y in yrange end),
+          {_, t} <- in_range_yt,
+          reduce: %{} do
+        map -> Map.update(map, t, [v0], &[v0 | &1])
+      end
+  end
+
+  def brute_force_x(x_vels, xrange) do
+    possibilities_by_steps =
+      for v0 <- x_vels,
+          vt = Stream.iterate(v0, fn v -> if v > 0, do: v - 1, else: 0 end) |> Stream.take(9000),
+          xt = Stream.scan(vt, &(&1 + &2)) |> Stream.take_while(&(&1 <= xrange.last)),
+          pos_with_t = Stream.with_index(xt, 1),
+          in_range_xt = Stream.filter(pos_with_t, fn {x, t} -> x in xrange end),
+          {_, t} <- in_range_xt,
+          reduce: %{} do
+        map -> Map.update(map, t, [v0], &[v0 | &1])
+      end
+  end
+
+  def x_velocity_range(xrange) do
+    upper = xrange.last
+
+    {_, lower} =
+      0..xrange.first
+      |> Stream.scan(&(&1 + &2))
+      |> Stream.with_index()
+      |> Enum.find(fn {dist, velo} -> dist in xrange end)
+
+    lower..upper
+  end
+
+  def y_velocity_range(yrange) do
+    upper = abs(yrange.first) - 1
+    yrange.first..upper
+  end
+
+  def parse(input) do
+    [xlo, xup, ylo, yup] =
+      for num <- String.split(input, ", ", trim: true) do
+        String.to_integer(num)
+      end
+
+    [xlo..xup, ylo..yup]
+  end
+
+  def get_example do
+    "20, 30, -10, -5"
+  end
+end
+
+Solution.get_example()
+|> Solution.solve_part_2()
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```

@@ -1,0 +1,382 @@
+<!-- livebook:{"autosave_interval_s":null} -->
+
+# Day 19: Beacon Scanner
+
+## Approach
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  @min 12
+
+  def solve_part_1(input) do
+    parse(input)
+    |> reconstuct_full_map
+    |> MapSet.size()
+  end
+
+  def solve_part_2(input) do
+    parse(input)
+  end
+
+  def test_fun(input) do
+  end
+
+  def reconstuct_full_map(sets) do
+    set1 = hd(sets)
+    {reconstructed_sets, _} = map_to_reference(sets, set1)
+
+    for set <- reconstructed_sets,
+        point <- set,
+        into: %MapSet{} do
+      point
+    end
+  end
+
+  def map_to_reference([], _), do: {[], []}
+
+  def map_to_reference(sets, reference_set) do
+    {remains, found} =
+      sets
+      |> Stream.map(fn set -> {set, reconstruct_to_fit(set, reference_set)} end)
+      |> Enum.split_with(fn {set, reconstructed} -> reconstructed == nil end)
+
+    remaining_sets = Enum.map(remains, &Kernel.elem(&1, 0))
+    new_reference_sets = Enum.map(found, &Kernel.elem(&1, 1))
+
+    {mapped_sets, remains} =
+      new_reference_sets
+      |> Enum.flat_map_reduce(remaining_sets, fn ref, remains ->
+        {mapped, unmapped} = map_to_reference(remains, ref)
+        {[ref | mapped], unmapped}
+      end)
+  end
+
+  def reconstruct_to_fit(set2, set1) do
+    stream_rotations(set2)
+    |> Stream.map(&reconstruct_by_translation(&1, set1))
+    |> Enum.find(fn reconstructed -> reconstructed != nil end)
+  end
+
+  def reconstruct_by_translation(set2, set1, minimum \\ @min) do
+    stream_cartesian_product(set1, set2)
+    |> Stream.map(fn {p1, p2} ->
+      dist_from_p1 = vector_sub(p1, p2)
+
+      set2_seen_from_set1_origin =
+        set2
+        |> translate(dist_from_p1)
+        |> Enum.into(%MapSet{})
+    end)
+    |> Enum.find(fn set2_seen_from_set1_origin ->
+      set2_seen_from_set1_origin
+      |> in_common(set1)
+      |> MapSet.size()
+      |> Kernel.>=(minimum)
+    end)
+  end
+
+  def in_common(set1, set2) do
+    MapSet.intersection(set1, set2)
+  end
+
+  def stream_cartesian_product(set1, set2) do
+    Stream.flat_map(set1, fn p1 ->
+      Stream.map(set2, fn p2 -> {p1, p2} end)
+    end)
+  end
+
+  def translate(points, move_by) do
+    Enum.map(points, &vector_add(&1, move_by))
+  end
+
+  def vector_add(v, u) do
+    v
+    |> Stream.zip(u)
+    |> Enum.map(&Tuple.sum/1)
+  end
+
+  def vector_sub(v, u) do
+    vector_add(v, vector_neg(u))
+  end
+
+  def vector_neg(v), do: Enum.map(v, &Kernel.-/1)
+
+  def stream_rotations(set) do
+    set
+    |> Enum.zip_with(& &1)
+    |> rotations(fn col -> Enum.map(col, &(-&1)) end)
+    |> Stream.map(fn rotated -> Enum.zip_with(rotated, & &1) end)
+  end
+
+  def rotations([x, y, z], neg \\ &Kernel.-/1) do
+    xn = neg.(x)
+    yn = neg.(y)
+    zn = neg.(z)
+
+    [
+      [x, y, z],
+      [x, z, yn],
+      [x, yn, zn],
+      [x, zn, y],
+      [xn, yn, z],
+      [xn, z, y],
+      [xn, y, zn],
+      [xn, zn, yn],
+      [y, xn, z],
+      [y, z, x],
+      [y, x, zn],
+      [y, zn, xn],
+      [yn, x, z],
+      [yn, z, xn],
+      [yn, xn, zn],
+      [yn, zn, x],
+      [z, x, y],
+      [z, y, xn],
+      [z, xn, yn],
+      [z, yn, x],
+      [zn, x, yn],
+      [zn, yn, xn],
+      [zn, xn, y],
+      [zn, y, x]
+    ]
+
+    # for [a, b, c] <- [[x, neg.(z), y], [y, x, neg.(z)], [z, x, y]],
+    #     nx <- [a, neg.(a)],
+    #     [ny, nz] <- [[b, c], [c, neg.(b)], [neg.(b), neg.(c)], [neg.(c), b]],
+    #     uniq: true do
+    #   [nx, ny, nz]      
+    # end
+  end
+
+  def parse(input) do
+    for section <- String.split(input, "\n\n", trim: true),
+        [_header | beacons] = String.split(section, "\n", trim: true) do
+      for beacon <- beacons,
+          into: %MapSet{} do
+        beacon
+        |> String.split(",", trim: true)
+        |> Enum.map(&String.to_integer/1)
+      end
+    end
+  end
+
+  def get_example do
+    "--- scanner 0 ---
+404,-588,-901
+528,-643,409
+-838,591,734
+390,-675,-793
+-537,-823,-458
+-485,-357,347
+-345,-311,381
+-661,-816,-575
+-876,649,763
+-618,-824,-621
+553,345,-567
+474,580,667
+-447,-329,318
+-584,868,-557
+544,-627,-890
+564,392,-477
+455,729,728
+-892,524,684
+-689,845,-530
+423,-701,434
+7,-33,-71
+630,319,-379
+443,580,662
+-789,900,-551
+459,-707,401
+
+--- scanner 1 ---
+686,422,578
+605,423,415
+515,917,-361
+-336,658,858
+95,138,22
+-476,619,847
+-340,-569,-846
+567,-361,727
+-460,603,-452
+669,-402,600
+729,430,532
+-500,-761,534
+-322,571,750
+-466,-666,-811
+-429,-592,574
+-355,545,-477
+703,-491,-529
+-328,-685,520
+413,935,-424
+-391,539,-444
+586,-435,557
+-364,-763,-893
+807,-499,-711
+755,-354,-619
+553,889,-390
+
+--- scanner 2 ---
+649,640,665
+682,-795,504
+-784,533,-524
+-644,584,-595
+-588,-843,648
+-30,6,44
+-674,560,763
+500,723,-460
+609,671,-379
+-555,-800,653
+-675,-892,-343
+697,-426,-610
+578,704,681
+493,664,-388
+-671,-858,530
+-667,343,800
+571,-461,-707
+-138,-166,112
+-889,563,-600
+646,-828,498
+640,759,510
+-630,509,768
+-681,-892,-333
+673,-379,-804
+-742,-814,-386
+577,-820,562
+
+--- scanner 3 ---
+-589,542,597
+605,-692,669
+-500,565,-823
+-660,373,557
+-458,-679,-417
+-488,449,543
+-626,468,-788
+338,-750,-386
+528,-832,-391
+562,-778,733
+-938,-730,414
+543,643,-506
+-524,371,-870
+407,773,750
+-104,29,83
+378,-903,-323
+-778,-728,485
+426,699,580
+-438,-605,-362
+-469,-447,-387
+509,732,623
+647,635,-688
+-868,-804,481
+614,-800,639
+595,780,-596
+
+--- scanner 4 ---
+727,592,562
+-293,-554,779
+441,611,-461
+-714,465,-776
+-743,427,-804
+-660,-479,-426
+832,-632,460
+927,-485,-438
+408,393,-506
+466,436,-512
+110,16,151
+-258,-428,682
+-393,719,612
+-211,-452,876
+808,-476,-593
+-575,615,604
+-485,667,467
+-680,325,-822
+-627,-443,-432
+872,-547,-609
+833,512,582
+807,604,487
+839,-516,451
+891,-625,532
+-652,-548,-490
+30,-46,-14"
+  end
+end
+
+Solution.get_example()
+|> Solution.solve_part_1()
+
+# |> Solution.test_fun()
+# [[-1, -1, 1], [-2, -2, 2], [-3, -3, 3], [-2, -3, 1], [5, 6, -4], [8, 0, 7]]
+```
+
+## Test Solution Module
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule SolutionTest do
+  use ExUnit.Case, async: true
+  import Solution
+
+  @tag :skip
+  test "part 1 with example" do
+    input = ""
+  end
+
+  @tag :skip
+  test "part 2 with example" do
+    assert true
+  end
+
+  # test "overlapping points, not enough common points" do
+  #   set1 = [[-1,-1], [-5,0], [-2,1]]
+  #   set2 = [[4, 1], [0, 2], [3, 3]]
+  #   expected = set1
+  #   assert overlapping_points(set1, set2) == nil
+  # end
+
+  test "rotations" do
+    output = rotations([1, 2, 3])
+    assert output |> length == 24
+  end
+
+  test "translate" do
+    input = [[-1, -1], [-5, 0], [-2, 1]]
+    move_by = [5, 2]
+    expected = [[4, 1], [0, 2], [3, 3]]
+    assert translate(input, move_by) == expected
+  end
+end
+
+ExUnit.run()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+IO.puts("Answer for part 1: #{answer}")
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```

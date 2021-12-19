@@ -1,0 +1,298 @@
+<!-- livebook:{"autosave_interval_s":null} -->
+
+# Day 18: Snailfish
+
+## Note: unfinished. Contains a bug where it will do the left most snail number split before exploding a snail number to the right.
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def solve_part_1(input) do
+    parse(input)
+    |> Enum.reduce(&add(&2, &1))
+    # |> IO.inspect()
+    |> eval
+
+    # |> IO.inspect()
+    # |> magnitude
+  end
+
+  def solve_part_2(input) do
+    parse(input)
+  end
+
+  def add(a, b) do
+    sum = ["["] ++ a ++ [","] ++ b ++ ["]"]
+    reduce(sum)
+  end
+
+  def reduce(parsed \\ [], tokens, depth \\ 0)
+  def reduce(parsed, [], _), do: Enum.reverse(parsed)
+
+  def reduce(parsed, [token | rest], depth) do
+    case token do
+      "[" ->
+        reduce([token | parsed], rest, depth + 1)
+
+      "]" ->
+        parsed = [token | parsed]
+        [parsed, rest, depth] = explode_if_needed(parsed, rest, depth - 1)
+        reduce(parsed, rest, depth)
+
+      num when byte_size(num) >= 2 ->
+        splitted = split(num)
+        reduce(parsed, splitted ++ rest, depth)
+
+      _ ->
+        reduce([token | parsed], rest, depth)
+    end
+  end
+
+  def split(num) do
+    int = String.to_integer(num)
+    [round_down, round_up] = [div(int, 2), ceil(int / 2)]
+    ["[", Integer.to_string(round_down), ",", Integer.to_string(round_up), "]"]
+  end
+
+  def explode_if_needed(["]", right, ",", left, "[" | parsed], rest, depth)
+      when depth >= 4 do
+    [right, left] = [String.to_integer(right), String.to_integer(left)]
+    rest = ["0" | add_leftmost(rest, right)]
+    # [parsed, rest, depth]
+    explode_and_move_left(parsed, rest, depth, left)
+  end
+
+  def explode_if_needed(parsed, rest, depth), do: [parsed, rest, depth]
+
+  def explode_and_move_left(parsed, rest, depth, value) do
+    {add_to_rest, new_parsed} =
+      Enum.split_while(parsed, fn token -> Integer.parse(token) == :error end)
+
+    # |> IO.inspect()
+
+    if new_parsed != [] do
+      [num | new_parsed] = new_parsed
+      new_num = (value + String.to_integer(num)) |> Integer.to_string()
+      new_rest = [new_num] ++ Enum.reverse(add_to_rest) ++ rest
+
+      freqs = Enum.frequencies(add_to_rest)
+      new_depth = depth - Map.get(freqs, "[", 0) + Map.get(freqs, "]", 0)
+      [new_parsed, new_rest, new_depth]
+    else
+      [parsed, rest, depth]
+    end
+  end
+
+  def add_leftmost(tokens, value) do
+    index =
+      tokens
+      |> Stream.map(&Integer.parse/1)
+      |> Enum.find_index(fn int -> int != :error end)
+
+    if index != nil do
+      List.update_at(tokens, index, fn old ->
+        (value + String.to_integer(old)) |> Integer.to_string()
+      end)
+    else
+      tokens
+    end
+  end
+
+  def eval(tokens), do: tokens |> Enum.join() |> Code.string_to_quoted!()
+
+  def magnitude(num) when is_number(num), do: num
+  def magnitude([a, b]), do: magnitude(a) * 3 + magnitude(b) * 2
+
+  def parse(input) do
+    for line <- String.split(input, "\n", trim: true) do
+      String.split(line, "", trim: true)
+    end
+  end
+
+  def get_example do
+    "[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]
+[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]"
+  end
+end
+
+Solution.get_example()
+|> Solution.solve_part_1()
+
+[[[[4, 0], [5, 4]], [[7, 7], [6, 0]]], [[8, [7, 7]], [[7, 9], [5, 0]]]]
+```
+
+## Test Solution Module
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule SolutionTest do
+  use ExUnit.Case, async: true
+  import Solution
+
+  test "part 1 with example" do
+    input = "[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
+[[[5,[2,8]],4],[5,[[9,9],0]]]
+[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
+[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
+[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]
+[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]
+[[[[5,4],[7,7]],8],[[8,3],8]]
+[[9,3],[[9,9],[6,[4,9]]]]
+[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
+[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]"
+    expected = 4140
+    assert solve_part_1(input) == expected
+  end
+
+  # test "part 2 with example" do
+  #   assert solve_part_2(get_example()) == @part_2_solution
+  # end
+
+  test "parse" do
+    input = "[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]"
+    # input |> parse |> IO.inspect()
+    assert true
+  end
+
+  test "reduce splits number" do
+    input = ["[", "[", "20", ",", "1", "]", ",", "[", "0", ",", "0", "]", "]"]
+    actual = [[[[5, 5], [5, 5]], 1], [0, 0]]
+    assert reduce(input) |> eval == actual
+  end
+
+  test "add leftmost" do
+    input = [",", "1", "]", ",", "2", "]", ",", "3", "]", ",", "4", "]"]
+    value = 8
+    actual = [",", "9", "]", ",", "2", "]", ",", "3", "]", ",", "4", "]"]
+    assert add_leftmost(input, value) == actual
+  end
+
+  test "explode if needed, no left side" do
+    parsed = ["[", "[", "[", "[", "[", "9", ",", "8", "]"] |> Enum.reverse()
+    rest = [",", "1", "]", ",", "2", "]", ",", "3", "]", ",", "4", "]"]
+    depth = 4
+    expected = [[[[0, 9], 2], 3], 4]
+    [p, r, d] = explode_if_needed(parsed, rest, depth)
+    # |> IO.inspect()
+    actual = (Enum.reverse(p) ++ r) |> eval
+    assert actual == expected
+  end
+
+  test "explode if needed, both sides" do
+    input = "[[[[0,7],4],[7,[[8,4],9]]],[1,1]]"
+
+    parsed =
+      [
+        "[",
+        "[",
+        "[",
+        "[",
+        "0",
+        ",",
+        "7",
+        "]",
+        ",",
+        "4",
+        "]",
+        ",",
+        "[",
+        "7",
+        ",",
+        "[",
+        "[",
+        "8",
+        ",",
+        "4",
+        "]"
+      ]
+      |> Enum.reverse()
+
+    rest = [",", "9", "]", "]", "]", ",", "[", "1", ",", "1", "]", "]"]
+    depth = 4
+    expected = [[[[0, 7], 4], [15, [0, 13]]], [1, 1]]
+    [p, r, d] = explode_if_needed(parsed, rest, depth)
+    # |> IO.inspect()
+    actual = (Enum.reverse(p) ++ r) |> eval
+    assert actual == expected
+  end
+
+  test "reduce" do
+    input = [
+      "[",
+      "[",
+      "[",
+      "[",
+      "[",
+      "4",
+      ",",
+      "3",
+      "]",
+      ",",
+      "4",
+      "]",
+      ",",
+      "4",
+      "]",
+      ",",
+      "[",
+      "7",
+      ",",
+      "[",
+      "[",
+      "8",
+      ",",
+      "4",
+      "]",
+      ",",
+      "9",
+      "]",
+      "]",
+      "]",
+      ",",
+      "[",
+      "1",
+      ",",
+      "1",
+      "]",
+      "]"
+    ]
+
+    expected = [[[[0, 7], 4], [[7, 8], [6, 0]]], [8, 1]]
+    assert reduce(input) |> eval == expected
+  end
+end
+
+ExUnit.run()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+IO.puts("Answer for part 1: #{answer}")
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```
