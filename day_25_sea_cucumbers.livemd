@@ -1,0 +1,103 @@
+<!-- livebook:{"autosave_interval_s":null} -->
+
+# Day 25: Sea Cucumber
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def get_example do
+    "v...>>.vv>
+.vv>>.vv..
+>>.>v>...v
+>>v>>.>.v.
+v>v.vv.v..
+>.>>..v...
+.vv..>.>v.
+v.v..>>v.v
+....v..v.>"
+  end
+
+  def parse(input) do
+    rows = String.split(input, "\n", trim: true)
+    n = length(rows)
+    m = rows |> hd |> String.length()
+
+    sea_floor =
+      for {row, i} <- rows |> Stream.with_index(),
+          {mark, j} <- String.split(row, "", trim: true) |> Stream.with_index(),
+          mark != ".",
+          into: %{} do
+        {{i, j}, mark}
+      end
+
+    [sea_floor, {n, m}]
+  end
+
+  def move_next_step?([sea_floor, {n, m}]) do
+    {updated_east, moved_east?} =
+      for {{i, j}, ">"} <- sea_floor,
+          new_pos = if(j + 1 < m, do: {i, j + 1}, else: {i, 0}),
+          reduce: {%{}, false} do
+        {new_floor, moved?} ->
+          unless Map.get(sea_floor, new_pos) do
+            new_floor
+            |> Map.put_new(new_pos, ">")
+            |> then(fn floor -> {floor, true} end)
+          else
+            new_floor
+            |> Map.put_new({i, j}, ">")
+            |> then(fn floor -> {floor, moved?} end)
+          end
+      end
+
+    {updated_floor, moved_south?} =
+      for {{i, j}, "v"} <- sea_floor,
+          new_pos = if(i + 1 < n, do: {i + 1, j}, else: {0, j}),
+          reduce: {updated_east, false} do
+        {new_floor, moved?} ->
+          if Map.get(sea_floor, new_pos) != "v" and Map.get(updated_east, new_pos) != ">" do
+            new_floor
+            |> Map.put_new(new_pos, "v")
+            |> then(fn floor -> {floor, true} end)
+          else
+            new_floor
+            |> Map.put_new({i, j}, "v")
+            |> then(fn floor -> {floor, moved?} end)
+          end
+      end
+
+    {moved_east? or moved_south?, [updated_floor, {n, m}]}
+  end
+
+  def solve_part_1(input) do
+    parse(input)
+    |> Stream.unfold(&move_next_step?/1)
+    |> Enum.find_index(&(&1 == false))
+    |> then(fn steps -> steps + 1 end)
+  end
+end
+
+Solution.get_example()
+|> Solution.solve_part_1()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+IO.puts("Answer for part 1: #{answer}")
+```

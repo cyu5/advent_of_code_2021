@@ -22,22 +22,45 @@ defmodule Solution do
 
   def solve_part_1(input) do
     parse(input)
-    |> reconstuct_full_map
+    |> reconstruct_beacons
     |> MapSet.size()
   end
 
   def solve_part_2(input) do
     parse(input)
+    |> reconstruct_scanners
+    |> largest_dist_apart
   end
 
-  def test_fun(input) do
+  def largest_dist_apart(set) do
+    for p1 <- set,
+        p2 <- set do
+      manhattan(p1, p2)
+    end
+    |> Enum.max()
   end
 
-  def reconstuct_full_map(sets) do
+  def manhattan(p1, p2) do
+    vector_sub(p1, p2)
+    |> Stream.map(&abs/1)
+    |> Enum.sum()
+  end
+
+  def reconstruct_scanners(sets) do
     set1 = hd(sets)
-    {reconstructed_sets, _} = map_to_reference(sets, set1)
+    {reconstructed_sets_with_dist, _} = map_to_reference(sets, set1)
 
-    for set <- reconstructed_sets,
+    for {_, dist} <- reconstructed_sets_with_dist,
+        into: %MapSet{} do
+      dist
+    end
+  end
+
+  def reconstruct_beacons(sets) do
+    set1 = hd(sets)
+    {reconstructed_sets_with_dist, _} = map_to_reference(sets, set1)
+
+    for {set, _dist} <- reconstructed_sets_with_dist,
         point <- set,
         into: %MapSet{} do
       point
@@ -53,13 +76,14 @@ defmodule Solution do
       |> Enum.split_with(fn {set, reconstructed} -> reconstructed == nil end)
 
     remaining_sets = Enum.map(remains, &Kernel.elem(&1, 0))
-    new_reference_sets = Enum.map(found, &Kernel.elem(&1, 1))
+    new_reference_sets_with_dist = Enum.map(found, &Kernel.elem(&1, 1))
 
     {mapped_sets, remains} =
-      new_reference_sets
-      |> Enum.flat_map_reduce(remaining_sets, fn ref, remains ->
+      new_reference_sets_with_dist
+      |> Enum.flat_map_reduce(remaining_sets, fn ref_with_dist, remains ->
+        {ref, ref_dist} = ref_with_dist
         {mapped, unmapped} = map_to_reference(remains, ref)
-        {[ref | mapped], unmapped}
+        {[ref_with_dist | mapped], unmapped}
       end)
   end
 
@@ -78,8 +102,10 @@ defmodule Solution do
         set2
         |> translate(dist_from_p1)
         |> Enum.into(%MapSet{})
+
+      {set2_seen_from_set1_origin, dist_from_p1}
     end)
-    |> Enum.find(fn set2_seen_from_set1_origin ->
+    |> Enum.find(fn {set2_seen_from_set1_origin, dist_from_p1} ->
       set2_seen_from_set1_origin
       |> in_common(set1)
       |> MapSet.size()
@@ -313,7 +339,7 @@ defmodule Solution do
 end
 
 Solution.get_example()
-|> Solution.solve_part_1()
+|> Solution.solve_part_2()
 
 # |> Solution.test_fun()
 # [[-1, -1, 1], [-2, -2, 2], [-3, -3, 3], [-2, -3, 1], [5, 6, -4], [8, 0, 7]]

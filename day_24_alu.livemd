@@ -1,0 +1,112 @@
+<!-- livebook:{"autosave_interval_s":null} -->
+
+# Day 24: Arithmetic Logic Unit
+
+## Setup
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.4.1"}
+])
+
+input_box = Kino.Input.textarea("input here")
+```
+
+## Solution Module
+
+```elixir
+defmodule Solution do
+  def get_example do
+    "inp w
+add z w
+mod z 2
+div w 2
+add y w
+mod y 2
+div w 2
+add x w
+mod x 2
+div w 2
+mod w 2"
+  end
+
+  def parse(input) do
+    for instruction <- String.split(input, "\n", trim: true) do
+      String.split(instruction)
+    end
+  end
+
+  def dfs(program, prefix \\ [], bindings \\ [w: 0, x: 0, y: 0, z: 0])
+
+  def dfs([], prefix, bindings) do
+    if Keyword.get(bindings, :z) == 0 do
+      [prefix |> Enum.reverse() |> Integer.undigits(), bindings]
+    else
+      nil
+    end
+  end
+
+  def dfs([ins | rest], prefix, bindings) do
+    case ins do
+      ["inp", variable] ->
+        Stream.map(9..1, fn digit ->
+          new_bindings = Keyword.replace!(bindings, String.to_atom(variable), digit)
+          new_prefix = [digit | prefix]
+          dfs(rest, new_prefix, new_bindings)
+        end)
+        |> Enum.find(& &1)
+
+      ["mul", op1, op2] ->
+        {_, new_bindings} = Code.eval_string("#{op1}=#{op1}*#{op2}", bindings)
+        dfs(rest, prefix, new_bindings)
+
+      ["add", op1, op2] ->
+        {_, new_bindings} = Code.eval_string("#{op1}=#{op1}+#{op2}", bindings)
+        dfs(rest, prefix, new_bindings)
+
+      ["div", op1, op2] ->
+        {_, new_bindings} = Code.eval_string("#{op1}=div(#{op1},#{op2})", bindings)
+        dfs(rest, prefix, new_bindings)
+
+      ["mod", op1, op2] ->
+        {_, new_bindings} = Code.eval_string("#{op1}=rem(#{op1},#{op2})", bindings)
+        dfs(rest, prefix, new_bindings)
+
+      ["eql", op1, op2] ->
+        {_, new_bindings} = Code.eval_string("#{op1}=if(#{op1}==#{op2},do: 1,else: 0)", bindings)
+        dfs(rest, prefix, new_bindings)
+    end
+  end
+
+  def solve_part_1(input) do
+    parse(input)
+    |> dfs()
+  end
+
+  def solve_part_2(input) do
+  end
+end
+
+Solution.get_example()
+|> Solution.solve_part_1()
+```
+
+## Solve Part 1
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_1()
+
+# IO.puts("Answer for part 1: #{answer}")
+```
+
+## Solve Part 2
+
+```elixir
+answer =
+  Kino.Input.read(input_box)
+  |> Solution.solve_part_2()
+
+IO.puts("Answer for part 2: #{answer}")
+```
